@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_foodstore/bloc/auth/auth_bloc.dart';
+import 'package:flutter_foodstore/bloc/cart/cart_bloc.dart';
+import 'package:flutter_foodstore/bloc/category/category_cubit.dart';
 import 'package:flutter_foodstore/bloc/order/order_cubit.dart';
+import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
 import 'package:flutter_foodstore/bloc/profile/profile_bloc.dart';
 import 'package:flutter_foodstore/bloc/review_product/review_product_cubit.dart';
 import 'package:flutter_foodstore/page/auth/login_page.dart';
@@ -13,14 +16,24 @@ import 'package:flutter_foodstore/page/dashboard/order_page.dart';
 import 'package:flutter_foodstore/page/dashboard/profile_page.dart';
 import 'package:flutter_foodstore/page/midtrans/midtrans_payment_page.dart';
 import 'package:flutter_foodstore/page/order/order_detail_page.dart';
+import 'package:flutter_foodstore/page/product/all_product_page.dart';
+import 'package:flutter_foodstore/page/product/detail_product_page.dart';
+import 'package:flutter_foodstore/page/product/product_by_category_page.dart';
+import 'package:flutter_foodstore/resource/model/category_model.dart';
+import 'package:flutter_foodstore/resource/remote/home_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/order_remote_resource.dart';
 import 'package:go_router/go_router.dart';
 
 class AppRouter {
   final AuthBloc authBloc;
   final OrderRemoteResource orderRemoteResource;
+  final HomeRemoteResource homeRemoteResource;
 
-  AppRouter({required this.authBloc, required this.orderRemoteResource});
+  AppRouter({
+    required this.authBloc,
+    required this.orderRemoteResource,
+    required this.homeRemoteResource,
+  });
 
   late final GoRouter router = GoRouter(
     refreshListenable: GoRouterRefreshStream(authBloc.stream),
@@ -53,31 +66,28 @@ class AppRouter {
         builder: (_, __, child) => DashboardPage(child: child),
         routes: [
           GoRoute(
-            path: '/dashboard/home',
-            builder: (_, __) {
-              return HomePage();
-            },
-          ),
+              path: '/dashboard/home',
+              builder: (_, __) {
+                return const HomePage();
+              }),
           GoRoute(
-            path: '/dashboard/order',
-            builder: (context, state) {
-              context.read<OrderCubit>().fetchOrders(isRefresh: true);
-              return OrderPage();
-            },
-          ),
+              path: '/dashboard/order',
+              builder: (context, state) {
+                context.read<OrderCubit>().fetchOrders(isRefresh: true);
+                return const OrderPage();
+              }),
           GoRoute(
-            path: '/dashboard/cart',
-            builder: (context, state) {
-              return CartPage();
-            },
-          ),
+              path: '/dashboard/cart',
+              builder: (context, state) {
+                context.read<CartBloc>().add(const CartEvent.fetchCart());
+                return const CartPage();
+              }),
           GoRoute(
-            path: '/dashboard/profile',
-            builder: (context, state) {
-              context.read<ProfileBloc>().add(const ProfileEvent.loadProfile());
-              return ProfilePage();
-            },
-          ),
+              path: '/dashboard/profile',
+              builder: (context, state) {
+                context.read<ProfileBloc>().add(const ProfileEvent.loadProfile());
+                return const ProfilePage();
+              }),
         ],
       ),
       GoRoute(
@@ -86,7 +96,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/register',
-        builder: (_, __) => RegisterPage(),
+        builder: (_, __) => const RegisterPage(),
       ),
       GoRoute(
         path: '/orderDetail/:snapToken',
@@ -113,6 +123,35 @@ class AppRouter {
         builder: (context, state) {
           return MidtransPaymentPage(
             snapToken: state.pathParameters['snapToken'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/allProducts',
+        builder: (context, state) => BlocProvider(
+          create: (context) =>
+              ProductCubit(homeRemoteResource)..fetchProduct(isRefresh: true),
+          child: const AllProductPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/detailProduct/:slug',
+        builder: (context, state) {
+          return BlocProvider(
+            create: (context) => ProductCubit(homeRemoteResource)
+              ..detailProduct(state.pathParameters['slug'] ?? ''),
+            child: const DetailProductPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/productByCategory',
+        builder: (context, state) {
+          final category = state.extra as CategoryModel;
+          return BlocProvider(
+            create: (context) => CategoryCubit(homeRemoteResource)
+              ..fetchCategoryBySlug(category.slug ?? ''),
+            child: ProductByCategoryPage(categoryName: category.name ?? ''),
           );
         },
       ),
