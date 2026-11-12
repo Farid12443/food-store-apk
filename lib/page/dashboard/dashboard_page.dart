@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/auth/auth_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -56,7 +58,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = true;
+    final isLoggedIn = context.watch<AuthBloc>().state is Authenticated;
     return Scaffold(
       appBar: _buildAppBar(isLoggedIn),
       body: widget.child,
@@ -108,7 +110,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildLogoutButton() {
     return IconButton(
       onPressed: () {
-        // Logout User
+        context.read<AuthBloc>().add(AuthEvent.logoutRequested());
+        context.go('/login');
       },
       icon: const Icon(Icons.logout_rounded),
       color: Colors.white,
