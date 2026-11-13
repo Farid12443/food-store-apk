@@ -90,7 +90,9 @@ class _DashboardPageState extends State<DashboardPage> {
       controller: _searchController,
       onSubmitted: (query) {
         if (query.isNotEmpty) {
-          // Navigate to search results page
+          context.push('/search?query=$query').then((_) {
+            _searchController.clear();
+          });
         }
       },
       decoration: InputDecoration(

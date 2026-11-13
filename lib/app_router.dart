@@ -3,12 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_foodstore/bloc/auth/auth_bloc.dart';
 import 'package:flutter_foodstore/bloc/cart/cart_bloc.dart';
 import 'package:flutter_foodstore/bloc/category/category_cubit.dart';
+import 'package:flutter_foodstore/bloc/checkout/checkout_cubit.dart';
+import 'package:flutter_foodstore/bloc/location/location_cubit.dart';
 import 'package:flutter_foodstore/bloc/order/order_cubit.dart';
 import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
 import 'package:flutter_foodstore/bloc/profile/profile_bloc.dart';
 import 'package:flutter_foodstore/bloc/review_product/review_product_cubit.dart';
+import 'package:flutter_foodstore/bloc/shipping_cost/shipping_cost_cubit.dart';
 import 'package:flutter_foodstore/page/auth/login_page.dart';
 import 'package:flutter_foodstore/page/auth/register_page.dart';
+import 'package:flutter_foodstore/page/checkout/checkout_page.dart';
 import 'package:flutter_foodstore/page/dashboard/cart_page.dart';
 import 'package:flutter_foodstore/page/dashboard/dashboard_page.dart';
 import 'package:flutter_foodstore/page/dashboard/home_page.dart';
@@ -19,7 +23,9 @@ import 'package:flutter_foodstore/page/order/order_detail_page.dart';
 import 'package:flutter_foodstore/page/product/all_product_page.dart';
 import 'package:flutter_foodstore/page/product/detail_product_page.dart';
 import 'package:flutter_foodstore/page/product/product_by_category_page.dart';
+import 'package:flutter_foodstore/page/search/search_page.dart';
 import 'package:flutter_foodstore/resource/model/category_model.dart';
+import 'package:flutter_foodstore/resource/remote/checkout_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/home_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/order_remote_resource.dart';
 import 'package:go_router/go_router.dart';
@@ -28,11 +34,13 @@ class AppRouter {
   final AuthBloc authBloc;
   final OrderRemoteResource orderRemoteResource;
   final HomeRemoteResource homeRemoteResource;
+  final CheckoutRemoteResource checkoutRemoteResource;
 
   AppRouter({
     required this.authBloc,
     required this.orderRemoteResource,
     required this.homeRemoteResource,
+    required this.checkoutRemoteResource,
   });
 
   late final GoRouter router = GoRouter(
@@ -152,6 +160,43 @@ class AppRouter {
             create: (context) => CategoryCubit(homeRemoteResource)
               ..fetchCategoryBySlug(category.slug ?? ''),
             child: ProductByCategoryPage(categoryName: category.name ?? ''),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/checkout',
+        builder: (context, state) {
+          final String totalPrice =
+              state.uri.queryParameters['totalPrice'] ?? '0';
+          final String totalWeight =
+              state.uri.queryParameters['totalWeight'] ?? '0';
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (context) => ShippingCostCubit(checkoutRemoteResource),
+              ),
+              BlocProvider(
+                create: (context) => CheckoutCubit(checkoutRemoteResource),
+              ),
+              BlocProvider(
+                create: (context) => LocationCubit(checkoutRemoteResource),
+              ),
+            ],
+            child: CheckoutPage(
+              totalPrice: int.parse(totalPrice),
+              totalWeight: int.parse(totalWeight),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (context, state) {
+          final String query = state.uri.queryParameters['query'] ?? '';
+          return BlocProvider(
+            create: (context) =>
+                ProductCubit(homeRemoteResource)..fetchProduct(query: query),
+            child: const SearchPage(),
           );
         },
       ),

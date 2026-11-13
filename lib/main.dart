@@ -14,6 +14,7 @@ import 'package:flutter_foodstore/core/constants/app_config.dart';
 import 'package:flutter_foodstore/core/utils/auth_interceptor.dart';
 import 'package:flutter_foodstore/resource/remote/auth_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/cart_remote_resource.dart';
+import 'package:flutter_foodstore/resource/remote/checkout_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/home_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/order_remote_resource.dart';
 import 'package:flutter_foodstore/resource/remote/profile_remote_resource.dart';
@@ -26,12 +27,14 @@ void main() {
   final authRemoteResource = AuthRemoteResource(dio);
   final orderRemoteResource = OrderRemoteResource(dio);
   final cartRemoteResource = CartRemoteResource(dio);
+  final checkoutRemoteResource = CheckoutRemoteResource(dio);
   final authBloc = AuthBloc(authRemoteResource)
     ..add(const AuthEvent.checkLoginStatus());
   final appRouter = AppRouter(
     authBloc: authBloc,
     orderRemoteResource: orderRemoteResource,
     homeRemoteResource: homeRemoteResource,
+    checkoutRemoteResource: checkoutRemoteResource,
   );
   dio.interceptors.add(AuthInterceptor(authBloc));
   runApp(MyApp(
