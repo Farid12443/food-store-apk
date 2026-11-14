@@ -1,0 +1,843 @@
+# PROMPT LENGKAP: Tutorial Flutter FoodStore (Bab 8: Halaman Product Screen)
+
+> **Cara pakai:** salin seluruh isi file ini ke AI (Claude, ChatGPT, dll). AI akan menghasilkan materi tutorial Bab 8 beserta kode yang sama persis atau sangat mirip dengan kode acuan di bawah. File ini mengikuti format prompt Bab 1 sampai 3, Bab 7, dan Bab 10 sampai 13.
+
+---
+
+## 1. PERAN
+
+Kamu adalah instruktur Flutter berpengalaman yang menulis tutorial berbahasa Indonesia untuk pemula. Gaya bahasa santai tapi jelas, memakai kata "kalian" saat menyapa pembaca. Tutorial berbentuk langkah demi langkah, setiap langkah diikuti kode dan penjelasan singkat.
+
+## 2. TUJUAN
+
+Buat materi tutorial lengkap untuk **Bab 8** dari kursus "Membuat Aplikasi E-Commerce FoodStore dengan Flutter". Aplikasi ini terhubung ke backend **Laravel REST API** (sudah dibuat di kursus sebelumnya).
+
+Cakupan materi:
+
+| Bab | Judul | Isi |
+|---|---|---|
+| 8 | Halaman Product Screen | 3 materi: Menampilkan List Data Products, Menampilkan Detail Product, Menampilkan List Data Products By Category |
+
+Hasil akhir bab: dari halaman home, pengguna bisa membuka daftar semua produk (dengan paginasi tombol "Load More"), detail produk (gambar, harga, deskripsi HTML, ulasan), dan daftar produk berdasarkan kategori.
+
+## 3. KONTEKS PROYEK
+
+- Nama project: `flutter_foodstore`, nama aplikasi (title): `Food Store`
+- State management: BLoC (`flutter_bloc`) dengan Cubit dan model state `freezed`
+- Navigasi: `go_router`
+- Tema: warna utama oranye (`Colors.orange`), Material 3
+
+**File yang sudah ada dari Bab 1 sampai 7 (jangan dibuat ulang, hanya dipakai):**
+
+- `lib/core/constants/app_config.dart` (`AppConfig.STORAGE_IMAGE`, `AppConfig.STORAGE_AVATAR`)
+- `lib/core/utils/currency_helper.dart` (`CurrencyHelper.formatRupiah(double)`)
+- `lib/core/components/product_card.dart` (`ProductCard(product:, isPopular:)`) dan `category_card.dart` (membuka route `/productByCategory` dengan `extra: category`)
+- BLoC dari Bab 7: `ProductCubit` (method `fetchProduct({bool isRefresh = false, String query = ''})` dan `detailProduct(String slug)`, state `loading`, `loadedProduct(products, {hasMore})`, `loadedDetailProduct(product)`, `error`), `CategoryCubit` (method `fetchCategoryBySlug(String slug)`, state `initial`, `loading`, `loadedCategoryBySlug(category)`, `error`)
+- `lib/resource/remote/home_remote_resource.dart` (`HomeRemoteResource`) dan model `ProductModel` (properti `title`, `slug`, `image`, `price`, `description`, `ratingsAvgRating`, `ratings` berupa `List<RatingModel>?`), `CategoryModel` (properti `name`, `slug`, `image`, `products`), `RatingModel` (properti `rating`, `review`, `customer` dengan `name` dan `image`) di `lib/resource/model/`
+- Package `flutter_widget_from_html` (sudah terpasang di Bab 1) untuk merender deskripsi produk yang berformat HTML
+- `lib/app_router.dart` hasil Bab 6 (route dashboard, login, register, `/orderDetail/:snapToken`, `/midtransPayment/:snapToken`) dan `lib/main.dart` hasil Bab 7
+
+> Catatan untuk AI: tombol "Add to Cart" pada halaman detail sengaja masih kosong (`onPressed: () {}`), logikanya dibuat di Bab 9. Jangan diisi di bab ini.
+
+## 4. ATURAN OUTPUT
+
+1. Tulis dalam **Bahasa Indonesia**.
+2. Output dalam format **Markdown**, satu materi satu bagian (heading `##`), langkah memakai heading `###` ("Langkah 1 - ...").
+3. **Kode wajib mengikuti kode acuan** di bagian 5: nama file, nama folder, nama class, nama variabel, nama method, path import, dan struktur kode harus sama. Boleh merapikan format, tidak boleh mengganti nama atau arsitektur.
+4. Setiap blok kode diberi label bahasa (`dart`, `bash`) dan di atasnya tulis path file, contoh: `lib/page/product/all_product_page.dart`.
+5. Setelah blok kode penting, beri penjelasan per bagian (apa yang ditambahkan, fungsi tiap properti/method).
+6. Jangan memakai em dash (tanda hubung panjang) di teks maupun kode. Gunakan tanda hubung biasa atau titik dua.
+7. Jangan menambah fitur, package, atau bab di luar yang tercantum.
+8. Gunakan kotak catatan (`>`) untuk peringatan penting.
+9. Di akhir bab, tulis ringkasan 2 sampai 3 kalimat tentang apa yang sudah dicapai.
+10. `app_router.dart` berubah di ketiga materi. Tampilkan **potongan perubahan** di materi 5.1 dan 5.2, lalu **kode lengkap** di materi 5.3 (versi akhir bab).
+11. Semua folder komponen memakai nama `lib/core/components/` (pakai huruf "s") pada path import.
+
+---
+
+# 5. BAB 8: HALAMAN PRODUCT SCREEN
+
+**Pembuka bab:** di Bab 7 halaman home sudah menampilkan produk dan kategori, tetapi kartunya belum bisa dibuka. Di bab ini dibuat tiga halaman tujuan: daftar semua produk, detail produk, dan produk per kategori.
+
+## 5.1 Menampilkan List Data Products
+
+**Pembuka:** di materi ini dibuat daftar produk dengan paginasi. Paginasi memuat data produk secara bertahap sehingga aplikasi lebih ringan dan tidak membebani sisi server. Jika data produk yang banyak dimuat sekaligus tanpa paginasi, aplikasi akan berat.
+
+### Langkah 1 - Membuat UI List Product
+
+Buat folder `product` di dalam `lib/page/`, lalu buat file `all_product_page.dart`.
+
+`lib/page/product/all_product_page.dart`
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
+import 'package:flutter_foodstore/core/components/product_card.dart';
+import 'package:go_router/go_router.dart';
+
+class AllProductPage extends StatefulWidget {
+  const AllProductPage({super.key});
+
+  @override
+  State<AllProductPage> createState() => _AllProductPageState();
+}
+
+class _AllProductPageState extends State<AllProductPage> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      body: _buildProductList(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      leading: IconButton(
+        onPressed: () => context.pop(),
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+      ),
+      title: const Text(
+        'All Product',
+        style: TextStyle(color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildProductList() {
+    return BlocConsumer<ProductCubit, ProductState>(
+      listener: (context, state) {
+        state.maybeWhen(
+          loadedProduct: (products, hasMore) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+              );
+            }
+          },
+          orElse: () {},
+        );
+      },
+      builder: (context, state) {
+        return state.maybeWhen(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (message) => Center(child: Text(message)),
+          loadedProduct: (products, hasMore) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: products.length + (hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index >= products.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            left: 50,
+                            right: 50,
+                            bottom: 16,
+                          ),
+                          child: FilledButton(
+                            onPressed: () =>
+                                context.read<ProductCubit>().fetchProduct(),
+                            child: const Text(
+                              "Load More",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        );
+                      }
+                      final product = products[index];
+                      return GestureDetector(
+                        onTap: () {
+                          context.push('/detailProduct/${product.slug}');
+                        },
+                        child: ProductCard(product: product, isPopular: false),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          orElse: () => const Center(child: Text('Something went wrong')),
+        );
+      },
+    );
+  }
+}
+```
+
+**Penjelasan wajib per bagian:**
+
+- **Import:** `flutter_bloc` menghubungkan UI dengan state `ProductCubit`, `go_router` untuk navigasi, `product_card.dart` untuk tampilan satu produk, `product_cubit.dart` untuk state daftar produk.
+- **`StatefulWidget`:** halaman ini butuh `StatefulWidget` karena memakai `ScrollController` yang lifecycle-nya harus dikelola. `_scrollController` mengontrol posisi scroll secara manual (misal scroll otomatis ke bawah saat produk bertambah). `dispose()` membersihkan controller agar tidak terjadi memory leak.
+- **`build`:** `Scaffold` dengan `AppBar` dan body daftar produk.
+- **`_buildAppBar`:** warna mengikuti tema, tombol back memakai `context.pop()` dari GoRouter, judul "All Product".
+- **`BlocConsumer`:** `listener` menjalankan aksi tambahan saat state berubah, `builder` membangun UI sesuai state. Saat `loadedProduct`, `listener` menggulung list otomatis ke bawah (`animateTo` ke `maxScrollExtent`, durasi 500 ms).
+- **Tiga kondisi `builder`:** `loading` (spinner), `error` (pesan error), `loadedProduct` (daftar produk), selain itu "Something went wrong".
+- **`ListView.builder`:** `itemCount` ditambah 1 jika `hasMore` bernilai true, item tambahan itu adalah tombol "Load More". Klik tombol memanggil `fetchProduct()` pada `ProductCubit` untuk memuat halaman berikutnya.
+- **Item produk:** dibungkus `GestureDetector`, saat diklik membuka `/detailProduct/${product.slug}`. Tampilan visual memakai `ProductCard` dengan `isPopular: false`.
+
+### Langkah 2 - Konfigurasi Navigation
+
+Buka `app_router.dart`. Perubahan pertama: `AppRouter` sekarang menerima `HomeRemoteResource`.
+
+```dart
+class AppRouter {
+  final AuthBloc authBloc;
+  final OrderRemoteResource orderRemoteResource;
+  final HomeRemoteResource homeRemoteResource;
+
+  AppRouter({
+    required this.authBloc,
+    required this.orderRemoteResource,
+    required this.homeRemoteResource,
+  });
+  // ... (isi router di bawahnya)
+}
+```
+
+Tambahkan juga import `all_product_page.dart`, `product_cubit.dart`, dan `home_remote_resource.dart`. Karena `AppRouter` berubah, edit `main.dart` pada variabel `appRouter`:
+
+`lib/main.dart`
+
+```dart
+final appRouter = AppRouter(
+  authBloc: authBloc,
+  orderRemoteResource: orderRemoteResource,
+  homeRemoteResource: homeRemoteResource,
+);
+```
+
+Lalu tambahkan route `/allProducts` di dalam `routes` (setelah route `/midtransPayment/:snapToken`):
+
+```dart
+GoRoute(
+  path: '/allProducts',
+  builder: (context, state) => BlocProvider(
+    create: (context) =>
+        ProductCubit(homeRemoteResource)..fetchProduct(isRefresh: true),
+    child: AllProductPage(),
+  ),
+),
+```
+
+Penjelasan: route diberi nama `/allProducts`. `BlocProvider` dipasang di sini supaya `ProductCubit` halaman ini terpisah dan tidak mengganggu `ProductCubit` milik halaman home (state home tidak berubah). `fetchProduct(isRefresh: true)` memastikan daftar dimulai dari halaman 1.
+
+### Langkah 3 - Pengujian
+
+Buka halaman home, klik teks **Lihat Lainnya**. Aplikasi membuka halaman All Product. Daftar produk tampil, dan jika masih ada halaman berikutnya muncul tombol **Load More** di bagian bawah.
+
+---
+
+## 5.2 Menampilkan Detail Product
+
+**Pembuka:** setelah daftar produk, sekarang halaman detail produk. Ketika salah satu produk di daftar diklik, aplikasi membuka halaman detailnya.
+
+### Langkah 1 - Membuat UI Detail Product
+
+Buat file `detail_product_page.dart` di folder `lib/page/product/`.
+
+`lib/page/product/detail_product_page.dart`
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
+import 'package:flutter_foodstore/core/constants/app_config.dart';
+import 'package:flutter_foodstore/core/utils/currency_helper.dart';
+import 'package:flutter_foodstore/resource/model/rating_model.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:go_router/go_router.dart';
+
+class DetailProductPage extends StatelessWidget {
+  const DetailProductPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _buildProductDetail(context),
+      floatingActionButton: _buildFloatingActionButton(context),
+    );
+  }
+
+  /// Detail Produk
+  Widget _buildProductDetail(BuildContext context) {
+    return BlocBuilder<ProductCubit, ProductState>(
+      builder: (context, state) {
+        return state.maybeWhen(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          loadedDetailProduct: (product) {
+            return ListView(
+              children: [
+                _buildImageBanner(product.image, context),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildProductInfo(product),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildDescription(product.description),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildReviewSection(product.ratings),
+                ),
+              ],
+            );
+          },
+          orElse: () => const Center(child: Text('Something went wrong')),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageBanner(String? imageUrl, BuildContext context) {
+    return Stack(children: [
+      ClipRRect(
+          borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20)),
+          child: Image.network(
+            '${AppConfig.STORAGE_IMAGE}$imageUrl',
+            width: double.infinity,
+            height: 300,
+            fit: BoxFit.cover,
+          )),
+      Positioned(
+        top: 16,
+        left: 8,
+        child: IconButton.filled(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          color: Colors.white,
+          onPressed: () {
+            context.pop();
+          },
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildProductInfo(product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          product.title ?? "",
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              CurrencyHelper.formatRupiah(product.price?.toDouble() ?? 0),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.green.shade700,
+              ),
+            ),
+            Row(
+              children: [
+                const Icon(Icons.star, color: Colors.amber, size: 16),
+                Text(
+                    '${product.ratingsAvgRating} (${product.ratings?.length} Reviews)'),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescription(String? description) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Description',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        HtmlWidget(description ?? ""),
+      ],
+    );
+  }
+
+  Widget _buildReviewSection(List<RatingModel>? ratings) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Ratings & Reviews',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ratings == null || ratings.isEmpty
+            ? _buildNoReviewMessage()
+            : _buildReviewList(ratings),
+      ],
+    );
+  }
+
+  Widget _buildNoReviewMessage() {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Center(child: Text("No reviews available")),
+    );
+  }
+
+  Widget _buildReviewList(List<RatingModel> ratings) {
+    return ListView.separated(
+      padding: const EdgeInsets.only(top: 2),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: ratings.length,
+      itemBuilder: (context, index) {
+        final review = ratings[index];
+        return _buildReviewItem(review);
+      },
+      separatorBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.0),
+        child: Divider(color: Colors.black, thickness: 1),
+      ),
+    );
+  }
+
+  Widget _buildReviewItem(RatingModel review) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundImage: NetworkImage(
+                    '${AppConfig.STORAGE_AVATAR}${review.customer?.image}'),
+                radius: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  review.customer?.name ?? "",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              _buildStarRating(review.rating ?? 0),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(review.review ?? ""),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarRating(int rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        return Icon(
+          i < rating ? Icons.star : Icons.star_border,
+          color: Colors.amber,
+          size: 24,
+        );
+      }),
+    );
+  }
+
+  Widget _buildFloatingActionButton(BuildContext context) {
+    return BlocBuilder<ProductCubit, ProductState>(
+      builder: (context, state) {
+        return state.maybeWhen(
+          loadedDetailProduct: (product) => FloatingActionButton.extended(
+            onPressed: () {},
+            label: const Text('Add to Cart',
+                style: TextStyle(color: Colors.white)),
+            icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
+          ),
+          orElse: () => const SizedBox(),
+        );
+      },
+    );
+  }
+}
+```
+
+**Penjelasan wajib per bagian:**
+
+- **`StatelessWidget`:** tidak ada perubahan UI yang dikelola di dalam widget, jadi semua dirender langsung.
+- **`build`:** parent layout `Scaffold`. `body` diisi `_buildProductDetail` sebagai konten utama, dan `floatingActionButton` berisi `_buildFloatingActionButton`.
+- **`_buildProductDetail`:** `BlocBuilder<ProductCubit, ProductState>`. Saat `loading` tampil spinner, saat `loadedDetailProduct` tampil `ListView` berisi banner gambar, info produk, deskripsi, dan bagian ulasan. State lain tampil "Something went wrong".
+- **`_buildImageBanner`:** `Stack` berisi gambar tinggi 300 dengan sudut bawah membulat 20, dan tombol back `IconButton.filled` di pojok kiri atas yang memanggil `context.pop()`.
+- **`_buildProductInfo`:** judul (ukuran 24, tebal), baris harga berwarna hijau lewat `CurrencyHelper.formatRupiah`, dan rating bintang dengan jumlah review.
+- **`_buildDescription`:** deskripsi produk berformat HTML dirender memakai `HtmlWidget` dari package `flutter_widget_from_html`.
+- **`_buildReviewSection`:** judul "Ratings & Reviews". Jika ulasan kosong tampil `_buildNoReviewMessage` ("No reviews available"), jika ada tampil `_buildReviewList`.
+- **`_buildReviewList`:** `ListView.separated` dengan `shrinkWrap: true` dan `NeverScrollableScrollPhysics` supaya ikut scroll halaman, diberi `Divider` hitam antar item.
+- **`_buildReviewItem`:** kartu abu-abu membulat berisi avatar pelanggan (`AppConfig.STORAGE_AVATAR`), nama, bintang rating (`_buildStarRating`, 5 ikon bintang terisi atau kosong), dan teks ulasan.
+- **`_buildFloatingActionButton`:** tombol "Add to Cart" hanya tampil saat state `loadedDetailProduct`. Isi `onPressed` masih kosong.
+
+### Langkah 2 - Membuat Navigasi
+
+Buka `app_router.dart`, tambahkan import `detail_product_page.dart` dan route berikut setelah route `/allProducts`:
+
+```dart
+GoRoute(
+  path: '/detailProduct/:slug',
+  builder: (context, state) {
+    return BlocProvider(
+      create: (context) => ProductCubit(homeRemoteResource)
+        ..detailProduct(state.pathParameters['slug'] ?? ''),
+      child: DetailProductPage(),
+    );
+  },
+),
+```
+
+Penjelasan: slug produk dibaca dari path parameter `:slug`, lalu `ProductCubit` baru dibuat dan langsung memanggil `detailProduct(slug)`.
+
+### Langkah 3 - Pengujian
+
+Restart project, lalu klik salah satu produk. Aplikasi membuka halaman detail berisi gambar, harga, rating, deskripsi, dan daftar ulasan.
+
+---
+
+## 5.3 Menampilkan List Data Products By Category
+
+**Pembuka:** di materi ini ditampilkan daftar produk sesuai kategori. Ketika salah satu kategori di halaman home diklik, aplikasi membuka daftar produk kategori tersebut.
+
+### Langkah 1 - Membuat UI List Data Products
+
+Buat file `product_by_category_page.dart` di folder `lib/page/product`.
+
+`lib/page/product/product_by_category_page.dart`
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/category/category_cubit.dart';
+import 'package:flutter_foodstore/core/components/product_card.dart';
+import 'package:go_router/go_router.dart';
+
+class ProductByCategoryPage extends StatefulWidget {
+  final String categoryName;
+  const ProductByCategoryPage({super.key, required this.categoryName});
+
+  @override
+  State<ProductByCategoryPage> createState() => _ProductByCategoryPageState();
+}
+
+class _ProductByCategoryPageState extends State<ProductByCategoryPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        leading: IconButton(
+          onPressed: () {
+            context.pop();
+          },
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+        ),
+        title: Text(
+          'Product In ${widget.categoryName}',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: BlocBuilder<CategoryCubit, CategoryState>(
+        builder: (context, state) {
+          return state.maybeWhen(
+            initial: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            loadedCategoryBySlug: (category) =>
+                category.products?.isNotEmpty == true
+                    ? ListView.builder(
+                        itemCount: category.products?.length,
+                        itemBuilder: (context, index) {
+                          final product = category.products![index];
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
+                            child:
+                                ProductCard(product: product, isPopular: false),
+                          );
+                        },
+                      )
+                    : const Center(child: Text('Product not found')),
+            error: (message) => Center(child: Text(message)),
+            orElse: () => const Center(child: Text('Something went wrong')),
+          );
+        },
+      ),
+    );
+  }
+}
+```
+
+**Penjelasan wajib per bagian:**
+
+- **Import:** `flutter_bloc`, `category_cubit.dart`, `product_card.dart`, dan `go_router`.
+- **`ProductByCategoryPage` (`StatefulWidget`):** menerima parameter `categoryName` yang dipakai sebagai judul `AppBar` ("Product In ...").
+- **`AppBar`:** tombol back dan judul berdasarkan kategori yang dipilih.
+- **`BlocBuilder<CategoryCubit, CategoryState>`:** membangun ulang tampilan setiap kali `CategoryCubit` mengeluarkan state baru, `maybeWhen` menangani state secara selektif.
+- **State handling:** `initial` dan `loading` menampilkan indikator loading. `loadedCategoryBySlug` menampilkan daftar produk jika ada (`category.products`), atau "Product not found" jika kosong. `error` menampilkan pesan error. `orElse` adalah fallback.
+- **`ProductCard(product: product, isPopular: false)`:** komponen kustom yang menampilkan info produk.
+
+### Langkah 2 - Membuat Navigasi
+
+Tambahkan route `/productByCategory` di `app_router.dart`:
+
+```dart
+GoRoute(
+  path: '/productByCategory',
+  builder: (context, state) {
+    final category = state.extra as CategoryModel;
+    return BlocProvider(
+      create: (context) => CategoryCubit(homeRemoteResource)
+        ..fetchCategoryBySlug(category.slug ?? ''),
+      child: ProductByCategoryPage(categoryName: category.name ?? ''),
+    );
+  },
+),
+```
+
+Penjelasan: data kategori dibawa lewat `extra` (dari `CategoryCard`). `slug` dipakai untuk memanggil `fetchCategoryBySlug`, `name` dikirim sebagai `categoryName`.
+
+Sehingga semua kode pada `app_router.dart` menjadi berikut (versi akhir Bab 8).
+
+`lib/app_router.dart`
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/auth/auth_bloc.dart';
+import 'package:flutter_foodstore/bloc/category/category_cubit.dart';
+import 'package:flutter_foodstore/bloc/order/order_cubit.dart';
+import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
+import 'package:flutter_foodstore/bloc/profile/profile_bloc.dart';
+import 'package:flutter_foodstore/bloc/review_product/review_product_cubit.dart';
+import 'package:flutter_foodstore/page/auth/login_page.dart';
+import 'package:flutter_foodstore/page/auth/register_page.dart';
+import 'package:flutter_foodstore/page/dashboard/cart_page.dart';
+import 'package:flutter_foodstore/page/dashboard/dashboard_page.dart';
+import 'package:flutter_foodstore/page/dashboard/home_page.dart';
+import 'package:flutter_foodstore/page/dashboard/order_page.dart';
+import 'package:flutter_foodstore/page/dashboard/profile_page.dart';
+import 'package:flutter_foodstore/page/midtrans/midtrans_payment_page.dart';
+import 'package:flutter_foodstore/page/order/order_detail_page.dart';
+import 'package:flutter_foodstore/page/product/all_product_page.dart';
+import 'package:flutter_foodstore/page/product/detail_product_page.dart';
+import 'package:flutter_foodstore/page/product/product_by_category_page.dart';
+import 'package:flutter_foodstore/resource/model/category_model.dart';
+import 'package:flutter_foodstore/resource/remote/home_remote_resource.dart';
+import 'package:flutter_foodstore/resource/remote/order_remote_resource.dart';
+import 'package:go_router/go_router.dart';
+
+class AppRouter {
+  final AuthBloc authBloc;
+  final OrderRemoteResource orderRemoteResource;
+  final HomeRemoteResource homeRemoteResource;
+
+  AppRouter({
+    required this.authBloc,
+    required this.orderRemoteResource,
+    required this.homeRemoteResource,
+  });
+
+  late final GoRouter router = GoRouter(
+    refreshListenable: GoRouterRefreshStream(authBloc.stream),
+    initialLocation: '/dashboard/home',
+    redirect: (context, state) {
+      final authState = authBloc.state;
+      final isLoggedIn = authState is Authenticated;
+      final protectedRoutes = [
+        '/dashboard/order',
+        '/dashboard/profile',
+        '/dashboard/cart',
+        '/order',
+        '/checkout',
+      ];
+
+      final isProtected = protectedRoutes
+          .any((route) => state.matchedLocation.startsWith(route));
+
+      if (!isLoggedIn && isProtected) return '/login';
+
+      if (isLoggedIn && state.matchedLocation == '/login') {
+        return '/login';
+      }
+
+      return null;
+    },
+    routes: [
+      ShellRoute(
+        builder: (_, __, child) => DashboardPage(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard/home',
+            builder: (_, __) {
+              return HomePage();
+            },
+          ),
+          GoRoute(
+            path: '/dashboard/order',
+            builder: (context, state) {
+              context.read<OrderCubit>().fetchOrders(isRefresh: true);
+              return OrderPage();
+            },
+          ),
+          GoRoute(
+            path: '/dashboard/cart',
+            builder: (context, state) {
+              return CartPage();
+            },
+          ),
+          GoRoute(
+            path: '/dashboard/profile',
+            builder: (context, state) {
+              context.read<ProfileBloc>().add(ProfileEvent.loadProfile());
+              return ProfilePage();
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (_, __) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (_, __) => RegisterPage(),
+      ),
+      GoRoute(
+        path: '/orderDetail/:snapToken',
+        builder: (context, state) {
+          final snapToken = state.pathParameters['snapToken'] ?? '';
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (context) =>
+                    OrderCubit(orderRemoteResource)..detailOrder(snapToken),
+              ),
+              BlocProvider(
+                create: (context) => ReviewProductCubit(
+                  orderRemoteResource,
+                ),
+              ),
+            ],
+            child: OrderDetailPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/midtransPayment/:snapToken',
+        builder: (context, state) {
+          return MidtransPaymentPage(
+            snapToken: state.pathParameters['snapToken'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/allProducts',
+        builder: (context, state) => BlocProvider(
+          create: (context) =>
+              ProductCubit(homeRemoteResource)..fetchProduct(isRefresh: true),
+          child: AllProductPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/detailProduct/:slug',
+        builder: (context, state) {
+          return BlocProvider(
+            create: (context) => ProductCubit(homeRemoteResource)
+              ..detailProduct(state.pathParameters['slug'] ?? ''),
+            child: DetailProductPage(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/productByCategory',
+        builder: (context, state) {
+          final category = state.extra as CategoryModel;
+          return BlocProvider(
+            create: (context) => CategoryCubit(homeRemoteResource)
+              ..fetchCategoryBySlug(category.slug ?? ''),
+            child: ProductByCategoryPage(categoryName: category.name ?? ''),
+          );
+        },
+      ),
+    ],
+  );
+}
+
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream stream) {
+    stream.listen((_) {
+      notifyListeners();
+    });
+  }
+}
+```
+
+> Catatan untuk AI: pada `redirect`, kondisi `isLoggedIn && state.matchedLocation == '/login'` mengembalikan `'/login'`. Itu sesuai kode sumber, jangan diubah. Route `/dashboard/cart` masih `return CartPage();` tanpa `CartBloc`, itu dilengkapi di Bab 9.
+
+### Langkah 3 - Pengujian
+
+Restart aplikasi (restart penuh, bukan hot reload), lalu pilih salah satu kategori di halaman home. Aplikasi membuka halaman "Product In ..." berisi produk pada kategori tersebut.
+
+**Ringkasan Bab 8 (tulis di akhir bab):** pembaca sudah membuat tiga halaman produk: daftar semua produk dengan paginasi "Load More", detail produk lengkap dengan deskripsi HTML dan ulasan, serta daftar produk berdasarkan kategori. Ketiga halaman terhubung lewat route baru di `AppRouter` yang sekarang juga menerima `HomeRemoteResource`.
+
+---
+
+# 6. CHECKLIST HASIL AKHIR (WAJIB DICEK AI SEBELUM MENJAWAB)
+
+File baru atau berubah setelah Bab 8 selesai:
+
+```text
+flutter_foodstore/
+  lib/
+    page/
+      product/
+        all_product_page.dart
+        detail_product_page.dart
+        product_by_category_page.dart
+    app_router.dart                 (menerima homeRemoteResource, 3 route baru)
+    main.dart                       (appRouter menerima homeRemoteResource)
+```
+
+Pastikan:
+
+- [ ] Semua 3 materi ada dan urutannya benar.
+- [ ] Nama file, class, variabel, dan path import sama persis dengan kode acuan (termasuk folder `core/components`).
+- [ ] `app_router.dart` ditampilkan sebagai potongan di materi 5.1 dan 5.2, dan lengkap di materi 5.3.
+- [ ] Tombol "Add to Cart" di detail produk tetap kosong (`onPressed: () {}`).
+- [ ] Route yang ditambahkan: `/allProducts`, `/detailProduct/:slug`, `/productByCategory` (tidak ada route lain).
+- [ ] Tidak ada em dash di seluruh teks dan kode.
+- [ ] Bab ditutup dengan ringkasan singkat.
+- [ ] Tidak ada fitur atau package tambahan di luar daftar.
