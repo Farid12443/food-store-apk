@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 class ProductCard extends StatefulWidget {
   final ProductModel product;
   final bool isPopular;
-
   const ProductCard({
     super.key,
     required this.product,
@@ -26,6 +25,7 @@ class _ProductCardState extends State<ProductCard> {
         : _buildProductCardNew(widget.product);
   }
 
+  /// Widget untuk Card Product New
   Widget _buildProductCardNew(ProductModel product) {
     return Card(
       elevation: 1,
@@ -47,7 +47,8 @@ class _ProductCardState extends State<ProductCard> {
                   child: SizedBox(
                     height: 100,
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(12.0)),
+                      borderRadius:
+                          const BorderRadius.all(Radius.circular(12.0)),
                       child: Image.network(
                           '${AppConfig.STORAGE_IMAGE}${product.image}',
                           fit: BoxFit.cover,
@@ -92,6 +93,7 @@ class _ProductCardState extends State<ProductCard> {
     );
   }
 
+  /// Widget untuk Card Product Popular
   Widget _buildProductCardPopular(ProductModel product) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -161,10 +163,11 @@ class _ProductCardState extends State<ProductCard> {
     );
   }
 
+  /// Tombol Add to Cart
   Widget _addToCartButton(ProductModel product) {
     return IconButton.filledTonal(
       onPressed: () {
-        // Add to cart action
+        // Add product to cart
       },
       icon: const Icon(
         Icons.add_shopping_cart_rounded,
@@ -173,6 +176,7 @@ class _ProductCardState extends State<ProductCard> {
     );
   }
 
+  /// Navigasi ke Detail Product
   void _navigateToDetailProduct(ProductModel product) {
     context.push('/detailProduct/${product.slug}');
   }

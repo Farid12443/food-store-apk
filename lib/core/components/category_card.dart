@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 class CategoryCard extends StatefulWidget {
   final CategoryModel category;
-
   const CategoryCard({
     super.key,
     required this.category,
@@ -45,7 +44,8 @@ class _CategoryCardState extends State<CategoryCard> {
               const SizedBox(height: 8),
               Text(
                 widget.category.name.toString(),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
             ],

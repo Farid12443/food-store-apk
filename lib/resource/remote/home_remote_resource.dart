@@ -8,7 +8,6 @@ import 'package:flutter_foodstore/resource/model/slider_model.dart';
 
 class HomeRemoteResource {
   final Dio dio;
-
   HomeRemoteResource(this.dio);
 
   Future<Either<String, List<SliderModel>>> fetchSliders() async {
@@ -67,8 +66,6 @@ class HomeRemoteResource {
       return Right(result);
     } on DioException catch (e) {
       return Left(e.toString());
-    } catch (e) {
-      return Left(e.toString());
     }
   }
 
@@ -80,8 +77,6 @@ class HomeRemoteResource {
       return Right(apiResponse.data);
     } on DioException catch (e) {
       return Left(e.toString());
-    } catch (e) {
-      return Left(e.toString());
     }
   }
 
@@ -92,8 +87,6 @@ class HomeRemoteResource {
           ApiResponse.fromJson(response.data, ProductModel.fromMap);
       return Right(apiResponse.data);
     } on DioException catch (e) {
-      return Left(e.toString());
-    } catch (e) {
       return Left(e.toString());
     }
   }

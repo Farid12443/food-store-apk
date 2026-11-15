@@ -8,7 +8,6 @@ part 'slider_cubit.freezed.dart';
 
 class SliderCubit extends Cubit<SliderState> {
   final HomeRemoteResource homeRemoteResource;
-
   SliderCubit(this.homeRemoteResource) : super(SliderState.initial());
 
   fecthSlider() async {

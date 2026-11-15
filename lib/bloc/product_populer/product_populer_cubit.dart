@@ -8,7 +8,6 @@ part 'product_populer_cubit.freezed.dart';
 
 class ProductPopulerCubit extends Cubit<ProductPopulerState> {
   final HomeRemoteResource homeRemoteResource;
-
   ProductPopulerCubit(this.homeRemoteResource)
       : super(ProductPopulerState.initial());
 

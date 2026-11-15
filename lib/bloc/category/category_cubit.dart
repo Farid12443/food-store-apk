@@ -8,7 +8,6 @@ part 'category_cubit.freezed.dart';
 
 class CategoryCubit extends Cubit<CategoryState> {
   final HomeRemoteResource homeRemoteResource;
-
   CategoryCubit(this.homeRemoteResource) : super(CategoryState.initial());
 
   fetchCategory() async {

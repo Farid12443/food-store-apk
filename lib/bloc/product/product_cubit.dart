@@ -8,7 +8,6 @@ part 'product_cubit.freezed.dart';
 
 class ProductCubit extends Cubit<ProductState> {
   final HomeRemoteResource homeRemoteResource;
-
   ProductCubit(this.homeRemoteResource) : super(ProductState.initial());
 
   int _currentPage = 1;
@@ -16,11 +15,7 @@ class ProductCubit extends Cubit<ProductState> {
   final List<ProductModel> _products = [];
 
   Future<void> fetchProduct({bool isRefresh = false, String query = ''}) async {
-    final isInitial = state.maybeWhen(
-      initial: () => true,
-      orElse: () => false,
-    );
-    if (isRefresh || isInitial) {
+    if (isRefresh) {
       _currentPage = 1;
       _hasMore = true;
       _products.clear();
