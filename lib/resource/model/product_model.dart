@@ -45,7 +45,7 @@ class ProductModel {
         title: json["title"],
         slug: json["slug"],
         description: json["description"],
-        price: json["price"],
+        price: num.tryParse(json["price"]?.toString() ?? '')?.toInt(),
         weight: json["weight"],
         createdAt: json["created_at"] == null
             ? null

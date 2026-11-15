@@ -16,7 +16,11 @@ class ProductCubit extends Cubit<ProductState> {
   final List<ProductModel> _products = [];
 
   Future<void> fetchProduct({bool isRefresh = false, String query = ''}) async {
-    if (isRefresh) {
+    final isInitial = state.maybeWhen(
+      initial: () => true,
+      orElse: () => false,
+    );
+    if (isRefresh || isInitial) {
       _currentPage = 1;
       _hasMore = true;
       _products.clear();
