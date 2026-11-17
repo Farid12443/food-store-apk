@@ -77,14 +77,14 @@ class CartRemoteResource {
     int productId,
     int cartId,
   ) async {
+    final response = await _dio.post(
+      'public/carts/decrement',
+      data: {
+        'product_id': productId.toString(),
+        'cart_id': cartId.toString(),
+      },
+    );
     try {
-      final response = await _dio.post(
-        'public/carts/decrement',
-        data: {
-          'product_id': productId.toString(),
-          'cart_id': cartId.toString(),
-        },
-      );
       if (response.statusCode == 200) {
         return Right(response.data['message']);
       } else {
@@ -99,13 +99,11 @@ class CartRemoteResource {
     }
   }
 
-  Future<Either<String, String>> removeCart(
-    int cartId,
-  ) async {
+  Future<Either<String, String>> removeCart(int cartId) async {
+    final response = await _dio.delete(
+      'public/carts/$cartId',
+    );
     try {
-      final response = await _dio.delete(
-        'public/carts/$cartId',
-      );
       if (response.statusCode == 200) {
         return Right(response.data['message']);
       } else {

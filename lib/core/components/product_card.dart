@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/cart/cart_bloc.dart';
 import 'package:flutter_foodstore/core/constants/app_config.dart';
 import 'package:flutter_foodstore/core/utils/currency_helper.dart';
 import 'package:flutter_foodstore/resource/model/product_model.dart';
@@ -167,7 +169,9 @@ class _ProductCardState extends State<ProductCard> {
   Widget _addToCartButton(ProductModel product) {
     return IconButton.filledTonal(
       onPressed: () {
-        // Add product to cart
+        context
+            .read<CartBloc>()
+            .add(CartEvent.addCart(productId: product.id ?? 0, qty: 1));
       },
       icon: const Icon(
         Icons.add_shopping_cart_rounded,

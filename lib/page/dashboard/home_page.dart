@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/cart/cart_bloc.dart';
 import 'package:flutter_foodstore/bloc/category/category_cubit.dart';
 import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
 import 'package:flutter_foodstore/bloc/product_populer/product_populer_cubit.dart';
@@ -28,70 +29,93 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        spacing: 16,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildSliderSection(),
-          _buildCategorySection(),
-          _buildProductSection(
-            title: "Product Popular",
-            icon: Icons.shopping_bag_outlined,
-            cubit: BlocBuilder<ProductPopulerCubit, ProductPopulerState>(
-              builder: (context, state) {
-                return state.maybeWhen(
-                  loading: () => _buildLoadingIndicator(),
-                  loadedProductPopuler: (products) => products.isNotEmpty
-                      ? SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
+    return BlocListener<CartBloc, CartState>(
+      listener: (context, state) {
+        state.whenOrNull(
+          cartStored: (message) => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.green,
+            ),
+          ),
+          error: (message) {
+            if (message == '401') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  showCloseIcon: true,
+                  content: Text('Please Login First'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        );
+      },
+      child: SingleChildScrollView(
+        child: Column(
+          spacing: 16,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSliderSection(),
+            _buildCategorySection(),
+            _buildProductSection(
+              title: "Product Popular",
+              icon: Icons.shopping_bag_outlined,
+              cubit: BlocBuilder<ProductPopulerCubit, ProductPopulerState>(
+                builder: (context, state) {
+                  return state.maybeWhen(
+                    loading: () => _buildLoadingIndicator(),
+                    loadedProductPopuler: (products) => products.isNotEmpty
+                        ? SizedBox(
+                            height: 200,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: products.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final product = products[index];
+                                return ProductCard(
+                                  product: product,
+                                  isPopular: true,
+                                );
+                              },
+                            ),
+                          )
+                        : _buildEmptyMessage(),
+                    orElse: () =>
+                        _buildErrorMessage("Failed to load popular products"),
+                  );
+                },
+              ),
+            ),
+            _buildProductSection(
+              title: "Product Terbaru",
+              icon: Icons.shopping_bag_outlined,
+              cubit: BlocBuilder<ProductCubit, ProductState>(
+                builder: (context, state) {
+                  return state.maybeWhen(
+                    loading: () => _buildLoadingIndicator(),
+                    loadedProduct: (products, hasMore) => products.isNotEmpty
+                        ? ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: products.length,
-                            itemBuilder: (BuildContext context, int index) {
+                            itemBuilder: (context, index) {
                               final product = products[index];
                               return ProductCard(
                                 product: product,
-                                isPopular: true,
+                                isPopular: false,
                               );
                             },
-                          ),
-                        )
-                      : _buildEmptyMessage(),
-                  orElse: () =>
-                      _buildErrorMessage("Failed to load popular products"),
-                );
-              },
+                          )
+                        : _buildEmptyMessage(),
+                    orElse: () =>
+                        _buildErrorMessage("Failed to load latest products"),
+                  );
+                },
+              ),
             ),
-          ),
-          _buildProductSection(
-            title: "Product Terbaru",
-            icon: Icons.shopping_bag_outlined,
-            cubit: BlocBuilder<ProductCubit, ProductState>(
-              builder: (context, state) {
-                return state.maybeWhen(
-                  loading: () => _buildLoadingIndicator(),
-                  loadedProduct: (products, hasMore) => products.isNotEmpty
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: products.length,
-                          itemBuilder: (context, index) {
-                            final product = products[index];
-                            return ProductCard(
-                              product: product,
-                              isPopular: false,
-                            );
-                          },
-                        )
-                      : _buildEmptyMessage(),
-                  orElse: () =>
-                      _buildErrorMessage("Failed to load latest products"),
-                );
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

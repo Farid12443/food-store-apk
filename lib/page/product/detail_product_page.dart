@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foodstore/bloc/cart/cart_bloc.dart';
 import 'package:flutter_foodstore/bloc/product/product_cubit.dart';
 import 'package:flutter_foodstore/core/constants/app_config.dart';
 import 'package:flutter_foodstore/core/utils/currency_helper.dart';
@@ -220,7 +221,11 @@ class DetailProductPage extends StatelessWidget {
       builder: (context, state) {
         return state.maybeWhen(
           loadedDetailProduct: (product) => FloatingActionButton.extended(
-            onPressed: () {},
+            onPressed: () {
+              context
+                  .read<CartBloc>()
+                  .add(CartEvent.addCart(productId: product.id ?? 0, qty: 1));
+            },
             label: const Text('Add to Cart',
                 style: TextStyle(color: Colors.white)),
             icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
