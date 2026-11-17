@@ -158,6 +158,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     });
   }
 
+  // appBar
   PreferredSizeWidget _appBar() {
     return AppBar(
       backgroundColor: Theme.of(context).colorScheme.primary,
@@ -328,7 +329,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       onChanged: (value) {
         selectShippingCost = null;
         if (selectLocation == null) {
-          _messageError('Please Select Location');
+          _messageEror('Please Select Location');
           return;
         }
         context.read<ShippingCostCubit>().getShippingCost(
@@ -414,14 +415,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         state.maybeWhen(
           success: (snapToken) async {
             final result = await context.push('/midtransPayment/$snapToken');
-            if (result == 'success' || result == 'Payment Success') {
+            if (result == 'success') {
               _navigateToDetailOrder(snapToken);
             } else {
               _navigateToDetailOrder(snapToken);
             }
           },
           error: (message) {
-            _messageError(message);
+            _messageEror(message);
           },
           orElse: () {},
         );
@@ -465,7 +466,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     context.go('/orderDetail/$snapToken');
   }
 
-  void _messageError(String message) {
+  void _messageEror(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.red));
   }

@@ -65,13 +65,13 @@ class CheckoutModel {
       'provinceName': provinceName,
       'cityName': cityName,
       'districtName': districtName,
-      'subdistrict_name': subdistrictName,
-      'zip_code': zipCode,
-      'full_address': fullAddress,
+      'subdistrictName': subdistrictName,
+      'zipCode': zipCode,
+      'fullAddress': fullAddress,
       'weight': weight,
-      'shipping_courier': shippingCourier,
-      'shipping_service': shippingService,
-      'shipping_cost': shippingCost,
+      'shippingCourier': shippingCourier,
+      'shippingService': shippingService,
+      'shippingCost': shippingCost,
       'total': total,
     };
   }
@@ -96,4 +96,36 @@ class CheckoutModel {
 
   factory CheckoutModel.fromJson(String source) =>
       CheckoutModel.fromMap(json.decode(source) as Map<String, dynamic>);
+
+  @override
+  bool operator ==(covariant CheckoutModel other) {
+    if (identical(this, other)) return true;
+
+    return other.provinceName == provinceName &&
+        other.cityName == cityName &&
+        other.districtName == districtName &&
+        other.subdistrictName == subdistrictName &&
+        other.zipCode == zipCode &&
+        other.fullAddress == fullAddress &&
+        other.weight == weight &&
+        other.shippingCourier == shippingCourier &&
+        other.shippingService == shippingService &&
+        other.shippingCost == shippingCost &&
+        other.total == total;
+  }
+
+  @override
+  int get hashCode {
+    return provinceName.hashCode ^
+        cityName.hashCode ^
+        districtName.hashCode ^
+        subdistrictName.hashCode ^
+        zipCode.hashCode ^
+        fullAddress.hashCode ^
+        weight.hashCode ^
+        shippingCourier.hashCode ^
+        shippingService.hashCode ^
+        shippingCost.hashCode ^
+        total.hashCode;
+  }
 }
