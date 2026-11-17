@@ -10,13 +10,26 @@ class CheckoutRemoteResource {
 
   Future<Either<String, List<LocationModel>>> getLocation(String search) async {
     try {
-      final response =
-          await _dio.get('public/search-destination?search=$search');
-      List<dynamic> data = response.data;
-      final result = data.map((e) => LocationModel.fromMap(e)).toList();
+      final response = await _dio.get(
+        'public/search-destination',
+        queryParameters: {'search': search},
+      );
+      final data = response.data;
+      if (data is! List) {
+        return Left(
+          'Format respons pencarian lokasi tidak valid: ${data.runtimeType}',
+        );
+      }
+      final result = data
+          .map((item) => LocationModel.fromMap(
+                Map<String, dynamic>.from(item as Map),
+              ))
+          .toList();
       return Right(result);
     } on DioException catch (e) {
       return Left(e.toString());
+    } catch (e) {
+      return Left('Gagal membaca respons pencarian lokasi: $e');
     }
   }
 

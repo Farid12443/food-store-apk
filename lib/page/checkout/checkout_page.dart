@@ -260,7 +260,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         BlocBuilder<LocationCubit, LocationState>(builder: (context, state) {
           return state.maybeWhen(
             loading: () => const Center(child: CircularProgressIndicator()),
-            loaded: (locations) => _buildLocationList(locations),
+            loaded: (locations) => locations.isEmpty
+                ? const Center(child: Text('Location not found'))
+                : _buildLocationList(locations),
+            error: (message) => Center(child: Text(message)),
             orElse: () => const SizedBox(),
           );
         }),
